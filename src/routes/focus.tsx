@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,9 @@ function FocusPage() {
       try {
         const raw = localStorage.getItem(CUSTOM_KEY);
         if (raw) return JSON.parse(raw);
-      } catch {}
+      } catch {
+        // ignore parse error
+      }
     }
     return { focus: 40, break: 5, label: "Custom" };
   });
@@ -59,8 +60,12 @@ function FocusPage() {
   const [remaining, setRemaining] = useState(presets[2].focus * 60);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const phaseRef = useRef<Phase>("focus");
+  const presetRef = useRef(presets[2]);
+  phaseRef.current = phase;
+  presetRef.current = preset;
 
   const sessions = useLiveQuery(
     () => db.sessions.where("completedAt").above(startOfDay(new Date()).getTime()).toArray(),
@@ -71,13 +76,44 @@ function FocusPage() {
   const progress = ((total - remaining) / total) * 100;
 
   useEffect(() => {
+    const audio = new Audio("/focus-1.mp3");
+    audio.preload = "auto";
+    audio.volume = 1.0;
+    audioRef.current = audio;
+
+    const unlockAudio = () => {
+      audio.load();
+      audio
+        .play()
+        .then(() => {
+          audioUnlockedRef.current = true;
+          audio.pause();
+          audio.currentTime = 0;
+        })
+        .catch(() => {});
+    };
+
+    document.addEventListener("pointerdown", unlockAudio);
+    document.addEventListener("keydown", unlockAudio);
+
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && audioCtxRef.current) {
-        audioCtxRef.current.resume().catch(() => {});
+      if (document.visibilityState === "visible") {
+        audioUnlockedRef.current = false;
+        audio.load();
+        unlockAudio();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      document.removeEventListener("pointerdown", unlockAudio);
+      document.removeEventListener("keydown", unlockAudio);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      audio.pause();
+      audio.src = "";
+      audioUnlockedRef.current = false;
+      audioRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -98,7 +134,6 @@ function FocusPage() {
   }, [running, phase, preset]);
 
   function selectPreset(p: { focus: number; break: number; label: string }) {
-    primeAudio();
     setRunning(false);
     setPreset(p);
     setPhase("focus");
@@ -106,14 +141,15 @@ function FocusPage() {
   }
 
   function saveCustom() {
-    primeAudio();
     const f = Math.max(1, Math.min(180, Math.round(editFocus)));
     const b = Math.max(1, Math.min(60, Math.round(editBreak)));
     const next = { focus: f, break: b, label: "Custom" };
     setCustom(next);
     try {
       localStorage.setItem(CUSTOM_KEY, JSON.stringify(next));
-    } catch {}
+    } catch {
+      // ignore storage error
+    }
     setPreset(next);
     setPhase("focus");
     setRemaining(f * 60);
@@ -122,21 +158,23 @@ function FocusPage() {
   }
 
   function finishPhase() {
+    const currentPhase = phaseRef.current;
+    const currentPreset = presetRef.current;
     setRunning(false);
     playChime();
-    if (phase === "focus") {
+    if (currentPhase === "focus") {
       db.sessions.add({
-        focusMin: preset.focus,
-        breakMin: preset.break,
+        focusMin: currentPreset.focus,
+        breakMin: currentPreset.break,
         completedAt: Date.now(),
       });
-      notify("Focus done! Time for a break", `${preset.break} min break starting`);
+      notify("Focus done! Time for a break", `${currentPreset.break} min break starting`);
       setPhase("break");
-      setRemaining(preset.break * 60);
+      setRemaining(currentPreset.break * 60);
     } else {
-      notify("Break over — let's focus", `${preset.focus} min focus starting`);
+      notify("Break over — let's focus", `${currentPreset.focus} min focus starting`);
       setPhase("focus");
-      setRemaining(preset.focus * 60);
+      setRemaining(currentPreset.focus * 60);
     }
     setTimeout(() => setRunning(true), 800);
   }
@@ -147,57 +185,33 @@ function FocusPage() {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(title, { body, icon: "/icon-192.png" });
       }
-    } catch {}
+    } catch {
+      // ignore notification error
+    }
   }
 
-  async function playChime() {
-    try {
-      const AC: typeof AudioContext =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-        audioCtxRef.current = new AC();
+  function playChime() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.load();
+
+    const attemptPlay = (retriesLeft: number) => {
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            audioUnlockedRef.current = true;
+          })
+          .catch(() => {
+            if (retriesLeft > 0) {
+              setTimeout(() => attemptPlay(retriesLeft - 1), 200);
+            }
+          });
       }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") {
-        await ctx.resume();
-      }
-      const duration = 3;
-      const now = ctx.currentTime;
-      const master = ctx.createGain();
-      master.gain.value = 0.35;
-      master.connect(ctx.destination);
-      // Soft arpeggio of bell-like tones (C major 9: C5, E5, G5, D6)
-      const notes = [
-        { f: 523.25, t: 0.0 },
-        { f: 659.25, t: 0.18 },
-        { f: 783.99, t: 0.36 },
-        { f: 1174.66, t: 0.54 },
-      ];
-      notes.forEach(({ f, t }) => {
-        const start = now + t;
-        const tail = duration - t;
-        // Fundamental + soft harmonic for bell character
-        [
-          { mult: 1, gain: 0.5 },
-          { mult: 2, gain: 0.18 },
-          { mult: 3, gain: 0.06 },
-        ].forEach(({ mult, gain: g }) => {
-          const osc = ctx.createOscillator();
-          osc.type = "sine";
-          osc.frequency.value = f * mult;
-          const env = ctx.createGain();
-          env.gain.setValueAtTime(0, start);
-          env.gain.linearRampToValueAtTime(g, start + 0.02);
-          env.gain.exponentialRampToValueAtTime(0.0001, start + tail);
-          osc.connect(env);
-          env.connect(master);
-          osc.start(start);
-          osc.stop(start + tail + 0.05);
-        });
-      });
-      if (audioStopRef.current) clearTimeout(audioStopRef.current);
-    } catch {}
+    };
+
+    attemptPlay(5);
   }
 
   function requestNotif() {
@@ -244,33 +258,18 @@ function FocusPage() {
     setRemaining(preset.focus * 60);
   }
 
-  function primeAudio() {
-    try {
-      const AC: typeof AudioContext =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-        audioCtxRef.current = new AC();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
-      // Play a very quiet, very short tone to actually "unlock" the audio pipeline in PWA
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 440;
-      gain.gain.value = 0.001; // nearly silent but real audio output
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.01);
-    } catch {}
-  }
-
   function toggle() {
     ensureNotif();
-    primeAudio();
+    if (!audioUnlockedRef.current && audioRef.current) {
+      audioRef.current
+        .play()
+        .then(() => {
+          audioUnlockedRef.current = true;
+          audioRef.current!.pause();
+          audioRef.current!.currentTime = 0;
+        })
+        .catch(() => {});
+    }
     setRunning((r) => !r);
   }
 
