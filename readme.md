@@ -92,7 +92,7 @@ chkchk/
 │   │   ├── expense.tsx  # Expense tracking page
 │   │   ├── todo.tsx     # Todo list page
 │   │   ├── habit.tsx    # Habit streak tracker page
-│   │   ├── kodomo.tsx   # Focus timer page
+│   │   ├── focus.tsx   # Focus timer page
 │   │   └── profile.tsx  # Data management & stats page
 │   ├── styles.css       # Tailwind CSS theme with semantic color tokens
 │   ├── router.tsx       # Router factory with QueryClient
@@ -112,7 +112,7 @@ chkchk/
 
 ## Database Schema
 
-All data is stored locally in IndexedDB under the database name `kodomo-app`:
+All data is stored locally in IndexedDB under the database name `checkcheck-app`:
 
 | Table | Purpose |
 |-------|---------|

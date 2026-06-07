@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/kodomo")({
+export const Route = createFileRoute("/focus")({
   head: () => ({
     meta: [
       { title: "Focus — checkcheck" },
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/kodomo")({
       },
     ],
   }),
-  component: KodomoPage,
+  component: FocusPage,
 });
 
 const BUILTIN_PRESETS = [
@@ -40,7 +40,7 @@ const CUSTOM_KEY = "ccc-custom-preset";
 
 type Phase = "focus" | "break";
 
-function KodomoPage() {
+function FocusPage() {
   const [custom, setCustom] = useState<{ focus: number; break: number; label: string }>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -51,12 +51,12 @@ function KodomoPage() {
     return { focus: 40, break: 5, label: "Custom" };
   });
   const presets = [...BUILTIN_PRESETS, custom];
-  const [preset, setPreset] = useState(presets[1]);
+  const [preset, setPreset] = useState(presets[2]);
   const [editOpen, setEditOpen] = useState(false);
   const [editFocus, setEditFocus] = useState(custom.focus);
   const [editBreak, setEditBreak] = useState(custom.break);
   const [phase, setPhase] = useState<Phase>("focus");
-  const [remaining, setRemaining] = useState(presets[1].focus * 60);
+  const [remaining, setRemaining] = useState(presets[2].focus * 60);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -201,6 +201,38 @@ function KodomoPage() {
   }
 
   function requestNotif() {
+    if (!("Notification" in window)) {
+      toast("Notifications not supported", {
+        description: "Your browser doesn't support notifications.",
+      });
+      return;
+    }
+    if (Notification.permission === "granted") {
+      toast("Notifications enabled", {
+        description: "You'll get reminders when focus or break ends.",
+      });
+      return;
+    }
+    if (Notification.permission === "denied") {
+      toast("Notifications blocked", {
+        description: "Enable notifications in your browser settings.",
+      });
+      return;
+    }
+    Notification.requestPermission().then((perm) => {
+      if (perm === "granted") {
+        toast("Notifications enabled", {
+          description: "You'll get reminders when focus or break ends.",
+        });
+      } else {
+        toast("Notifications blocked", {
+          description: "Enable notifications in your browser settings.",
+        });
+      }
+    });
+  }
+
+  function ensureNotif() {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -237,7 +269,7 @@ function KodomoPage() {
   }
 
   function toggle() {
-    requestNotif();
+    ensureNotif();
     primeAudio();
     setRunning((r) => !r);
   }

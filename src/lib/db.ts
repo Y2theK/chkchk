@@ -58,7 +58,7 @@ class AppDB extends Dexie {
   habitLogs!: Table<HabitLog, number>;
 
   constructor() {
-    super("kodomo-app");
+    super("checkcheck-app");
     this.version(1).stores({
       categories: "++id, type, name",
       transactions: "++id, type, occurredAt, categoryId",

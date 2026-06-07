@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TodoRouteImport } from './routes/todo'
 import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as KodomoRouteImport } from './routes/kodomo'
 import { Route as HabitRouteImport } from './routes/habit'
+import { Route as FocusRouteImport } from './routes/focus'
 import { Route as ExpenseRouteImport } from './routes/expense'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -26,14 +26,14 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const KodomoRoute = KodomoRouteImport.update({
-  id: '/kodomo',
-  path: '/kodomo',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HabitRoute = HabitRouteImport.update({
   id: '/habit',
   path: '/habit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FocusRoute = FocusRouteImport.update({
+  id: '/focus',
+  path: '/focus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExpenseRoute = ExpenseRouteImport.update({
@@ -50,16 +50,16 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/expense': typeof ExpenseRoute
+  '/focus': typeof FocusRoute
   '/habit': typeof HabitRoute
-  '/kodomo': typeof KodomoRoute
   '/profile': typeof ProfileRoute
   '/todo': typeof TodoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/expense': typeof ExpenseRoute
+  '/focus': typeof FocusRoute
   '/habit': typeof HabitRoute
-  '/kodomo': typeof KodomoRoute
   '/profile': typeof ProfileRoute
   '/todo': typeof TodoRoute
 }
@@ -67,31 +67,24 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/expense': typeof ExpenseRoute
+  '/focus': typeof FocusRoute
   '/habit': typeof HabitRoute
-  '/kodomo': typeof KodomoRoute
   '/profile': typeof ProfileRoute
   '/todo': typeof TodoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/expense' | '/habit' | '/kodomo' | '/profile' | '/todo'
+  fullPaths: '/' | '/expense' | '/focus' | '/habit' | '/profile' | '/todo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/expense' | '/habit' | '/kodomo' | '/profile' | '/todo'
-  id:
-    | '__root__'
-    | '/'
-    | '/expense'
-    | '/habit'
-    | '/kodomo'
-    | '/profile'
-    | '/todo'
+  to: '/' | '/expense' | '/focus' | '/habit' | '/profile' | '/todo'
+  id: '__root__' | '/' | '/expense' | '/focus' | '/habit' | '/profile' | '/todo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExpenseRoute: typeof ExpenseRoute
+  FocusRoute: typeof FocusRoute
   HabitRoute: typeof HabitRoute
-  KodomoRoute: typeof KodomoRoute
   ProfileRoute: typeof ProfileRoute
   TodoRoute: typeof TodoRoute
 }
@@ -112,18 +105,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/kodomo': {
-      id: '/kodomo'
-      path: '/kodomo'
-      fullPath: '/kodomo'
-      preLoaderRoute: typeof KodomoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/habit': {
       id: '/habit'
       path: '/habit'
       fullPath: '/habit'
       preLoaderRoute: typeof HabitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/focus': {
+      id: '/focus'
+      path: '/focus'
+      fullPath: '/focus'
+      preLoaderRoute: typeof FocusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/expense': {
@@ -146,8 +139,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExpenseRoute: ExpenseRoute,
+  FocusRoute: FocusRoute,
   HabitRoute: HabitRoute,
-  KodomoRoute: KodomoRoute,
   ProfileRoute: ProfileRoute,
   TodoRoute: TodoRoute,
 }
