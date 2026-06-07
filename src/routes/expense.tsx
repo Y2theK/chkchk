@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, startOfMonth, endOfMonth, subMonths, isSameMonth, isSameDay } from "date-fns";
 import {
@@ -12,6 +12,9 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
+  CartesianGrid,
 } from "recharts";
 import { db, ensureSeed, type TxType } from "@/lib/db";
 import { AppShell, Fab } from "@/components/AppShell";
@@ -20,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/expense")({
   head: () => ({
@@ -35,15 +39,38 @@ export const Route = createFileRoute("/expense")({
   component: ExpensePage,
 });
 
+const EGG_CHART_KEY = "egg-chart-unlocked";
+const EGG_CLICK_WINDOW = 2000;
+const EGG_CLICK_COUNT = 5;
+
 const fmt = (n: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n);
 
 function ExpensePage() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [open, setOpen] = useState(false);
+  const [chartUnlocked, setChartUnlocked] = useState(false);
+  const eggClicksRef = useRef<number[]>([]);
 
   useEffect(() => {
     ensureSeed();
+    db.settings.get(EGG_CHART_KEY).then((entry) => {
+      if (entry?.value === "true") {
+        setChartUnlocked(true);
+      }
+    });
   }, []);
+
+  const handleEggClick = useCallback(() => {
+    if (chartUnlocked) return;
+    const now = Date.now();
+    eggClicksRef.current = [...eggClicksRef.current.filter((t) => now - t < EGG_CLICK_WINDOW), now];
+    if (eggClicksRef.current.length >= EGG_CLICK_COUNT) {
+      setChartUnlocked(true);
+      db.settings.put({ key: EGG_CHART_KEY, value: "true" });
+      toast("Easter egg cracked!", { description: "6-month trend chart unlocked." });
+      eggClicksRef.current = [];
+    }
+  }, [chartUnlocked]);
 
   const categories = useLiveQuery(() => db.categories.toArray(), []);
 
@@ -132,11 +159,23 @@ function ExpensePage() {
       </header>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2 rounded-3xl bg-sky p-5 text-foreground shadow-sm">
+        <div className="col-span-2 relative rounded-3xl bg-sky p-5 text-foreground shadow-sm">
           <div className="flex items-center gap-2 text-xs font-medium opacity-80">
             <Wallet className="h-4 w-4" /> Balance this month
           </div>
           <p className="mt-1 text-3xl font-bold">{fmt(balance)}</p>
+          {!chartUnlocked && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEggClick();
+              }}
+              className="absolute -right-2 -top-2 rotate-6 opacity-30 transition-all hover:opacity-60 active:scale-90 animate-pulse"
+              aria-label="???"
+            >
+              <img src="/easter-egg-2.png" alt="?" className="h-5 w-5" />
+            </button>
+          )}
         </div>
         <div className="rounded-3xl bg-card p-4 shadow-sm">
           <div className="flex items-center gap-1.5 text-xs font-medium text-income">
@@ -156,9 +195,9 @@ function ExpensePage() {
         <h2 className="mb-3 text-sm font-semibold">Last 6 months</h2>
         <div className="h-40 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyChart} barGap={4}>
+            <BarChart data={monthlyChart} barGap={4} barCategoryGap={12}>
               <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis hide />
+              <YAxis hide width={0} />
               <Tooltip
                 cursor={{ fill: "var(--muted)" }}
                 contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", fontSize: 12 }}
@@ -169,6 +208,54 @@ function ExpensePage() {
           </ResponsiveContainer>
         </div>
       </section>
+
+      {chartUnlocked && (
+        <section className="mt-4 rounded-3xl bg-card p-4 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold">Income vs Expense Trend</h2>
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyChart} margin={{ left: 20, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--muted)" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  tickMargin={8}
+                />
+                <YAxis
+                  width={28}
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={10}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    fontSize: 12,
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  stroke="var(--income)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expense"
+                  stroke="var(--expense)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
 
       {categoryBreakdown.length > 0 && (
         <section className="mt-4 rounded-3xl bg-card p-4 shadow-sm">
