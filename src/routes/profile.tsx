@@ -61,7 +61,15 @@ function ProfilePage() {
         const data = JSON.parse(await file.text());
         await db.transaction(
           "rw",
-          [db.categories, db.transactions, db.todos, db.sessions, db.goals, db.habitLogs, db.settings],
+          [
+            db.categories,
+            db.transactions,
+            db.todos,
+            db.sessions,
+            db.goals,
+            db.habitLogs,
+            db.settings,
+          ],
           async () => {
             if (data.categories) {
               await db.categories.clear();
@@ -173,7 +181,8 @@ function ProfilePage() {
             <div>
               <p className="text-sm font-semibold">Easter Eggs</p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Keep an eye out for hidden eggs across the app. Tap them 5 times quickly to crack them open and unlock secret features.
+                Keep an eye out for hidden eggs across the app. Tap them 5 times quickly to crack
+                them open and unlock secret features.
               </p>
             </div>
           </div>
