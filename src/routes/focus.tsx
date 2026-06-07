@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { startOfDay } from "date-fns";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/AppShell";
-import { Play, Pause, RotateCcw, Bell } from "lucide-react";
+import { Play, Pause, RotateCcw, Bell, Volume2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -36,6 +36,14 @@ const BUILTIN_PRESETS = [
   { focus: 30, break: 5, label: "Standard" },
 ];
 const CUSTOM_KEY = "ccc-custom-preset";
+const AUDIO_KEY = "focus-sound";
+const AUDIO_OPTIONS = [
+  { id: "focus-1", label: "Chime 1" },
+  { id: "focus-2", label: "Chime 2" },
+  { id: "focus-3", label: "Chime 3" },
+  { id: "focus-4", label: "Chime 4" },
+  { id: "focus-5", label: "Chime 5" },
+];
 
 type Phase = "focus" | "break";
 
@@ -59,6 +67,8 @@ function FocusPage() {
   const [phase, setPhase] = useState<Phase>("focus");
   const [remaining, setRemaining] = useState(presets[2].focus * 60);
   const [running, setRunning] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState("focus-1");
+  const [soundOpen, setSoundOpen] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
@@ -66,6 +76,14 @@ function FocusPage() {
   const presetRef = useRef(presets[2]);
   phaseRef.current = phase;
   presetRef.current = preset;
+
+  useEffect(() => {
+    db.settings.get(AUDIO_KEY).then((entry) => {
+      if (entry?.value) {
+        setSelectedAudio(entry.value);
+      }
+    });
+  }, []);
 
   const sessions = useLiveQuery(
     () => db.sessions.where("completedAt").above(startOfDay(new Date()).getTime()).toArray(),
@@ -76,7 +94,7 @@ function FocusPage() {
   const progress = ((total - remaining) / total) * 100;
 
   useEffect(() => {
-    const audio = new Audio("/focus-1.mp3");
+    const audio = new Audio(`/${selectedAudio}.mp3`);
     audio.preload = "auto";
     audio.volume = 1.0;
     audioRef.current = audio;
@@ -114,7 +132,18 @@ function FocusPage() {
       audioUnlockedRef.current = false;
       audioRef.current = null;
     };
-  }, []);
+  }, [selectedAudio]);
+
+  function selectAudio(id: string) {
+    setSelectedAudio(id);
+    db.settings.put({ key: AUDIO_KEY, value: id });
+  }
+
+  function previewAudio(id: string) {
+    const audio = new Audio(`/${id}.mp3`);
+    audio.volume = 1.0;
+    audio.play().catch(() => {});
+  }
 
   useEffect(() => {
     if (!running) return;
@@ -316,7 +345,10 @@ function FocusPage() {
                   : "bg-card text-muted-foreground shadow-sm"
               }`}
             >
-              <p className="text-xs font-medium">{p.label}</p>
+              <p className="text-xs font-medium flex items-center justify-center gap-1">
+                {p.label}
+                {isCustom && <Pencil className="h-3 w-3" />}
+              </p>
               <p className="mt-0.5 text-base font-bold">
                 {p.focus}/{p.break}
               </p>
@@ -363,6 +395,49 @@ function FocusPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={soundOpen} onOpenChange={setSoundOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Timer Sound</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            {AUDIO_OPTIONS.map((opt) => {
+              const active = opt.id === selectedAudio;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => selectAudio(opt.id)}
+                  className={`flex items-center justify-between rounded-xl p-3 transition-all ${
+                    active
+                      ? "bg-sky text-foreground shadow-md"
+                      : "bg-card text-muted-foreground shadow-sm hover:bg-accent"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Volume2 className="h-5 w-5" />
+                    <span className="font-medium">{opt.label}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={active ? "default" : "ghost"}
+                    className={active ? "" : "text-muted-foreground"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      previewAudio(opt.id);
+                    }}
+                  >
+                    Preview
+                  </Button>
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setSoundOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="mt-8 flex flex-col items-center">
         <div className="relative h-64 w-64">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 240 240">
@@ -403,6 +478,13 @@ function FocusPage() {
             className="flex h-16 w-16 items-center justify-center rounded-full bg-sky text-foreground shadow-lg shadow-sky/40 active:scale-95"
           >
             {running ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
+          </button>
+          <button
+            onClick={() => setSoundOpen(true)}
+            aria-label="Choose sound"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
+          >
+            <Volume2 className="h-5 w-5" />
           </button>
           <button
             onClick={requestNotif}
