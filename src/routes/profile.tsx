@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Download, Upload, Trash2, Smartphone, Heart } from "lucide-react";
+import { Download, Upload, Trash2, Smartphone, Heart, CircleHelp } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { AboutDialog } from "@/components/AboutDialog";
@@ -183,8 +183,9 @@ function ProfilePage() {
         </div>
         <button
           onClick={() => setAboutOpen(true)}
-          className="w-full rounded-2xl bg-card p-4 text-center text-xs text-muted-foreground shadow-sm active:scale-[0.99] transition-transform"
+          className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-card p-4 text-xs text-muted-foreground shadow-sm active:scale-[0.99] transition-transform"
         >
+          <CircleHelp className="h-3.5 w-3.5" />
           checkcheck v1.0
         </button>
       </section>
