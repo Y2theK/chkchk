@@ -59,7 +59,7 @@ function KodomoPage() {
   const [remaining, setRemaining] = useState(presets[1].focus * 60);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const audioStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sessions = useLiveQuery(
@@ -143,7 +143,13 @@ function KodomoPage() {
       const AC: typeof AudioContext =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AC();
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AC();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
       const duration = 3;
       const now = ctx.currentTime;
       const master = ctx.createGain();
@@ -179,12 +185,6 @@ function KodomoPage() {
         });
       });
       if (audioStopRef.current) clearTimeout(audioStopRef.current);
-      audioStopRef.current = setTimeout(
-        () => {
-          ctx.close().catch(() => {});
-        },
-        duration * 1000 + 100,
-      );
     } catch {}
   }
 
@@ -202,6 +202,15 @@ function KodomoPage() {
 
   function toggle() {
     requestNotif();
+    const AC: typeof AudioContext =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AC();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => {});
+    }
     setRunning((r) => !r);
   }
 

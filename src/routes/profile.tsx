@@ -172,9 +172,18 @@ function ProfilePage() {
             <Smartphone className="mt-0.5 h-5 w-5 text-sky" />
             <div>
               <p className="text-sm font-semibold">Install as app</p>
-              <p className="text-xs text-muted-foreground">
-                On iOS: Share → Add to Home Screen. On Android: menu → Install app.
-              </p>
+              <p className="mt-2 text-xs font-medium text-muted-foreground">iPhone (Safari):</p>
+              <ol className="mt-1 list-inside space-y-1 text-xs text-muted-foreground">
+                <li>1. Tap the Share button (bottom bar)</li>
+                <li>2. Scroll down and tap "Add to Home Screen"</li>
+                <li>3. Tap "Add" to confirm</li>
+              </ol>
+              <p className="mt-3 text-xs font-medium text-muted-foreground">Android (Chrome):</p>
+              <ol className="mt-1 list-inside space-y-1 text-xs text-muted-foreground">
+                <li>1. Tap the menu icon (⋮ top right)</li>
+                <li>2. Tap "Install app" or "Add to Home Screen"</li>
+                <li>3. Tap "Install" to confirm</li>
+              </ol>
             </div>
           </div>
         </div>

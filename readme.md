@@ -53,7 +53,7 @@ bun install
 pnpm dev
 ```
 
-The app will be available at `http://localhost:3000` (or the next available port).
+The app will be available at `http://localhost:8080` (or the next available port).
 
 ### Build for Production
 
