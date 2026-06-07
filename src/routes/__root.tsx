@@ -7,8 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/react";
+import { AboutDialog, hasAboutBeenSeen, markAboutSeen } from "@/components/AboutDialog";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -167,12 +168,32 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [showFirstTime, setShowFirstTime] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    hasAboutBeenSeen().then((seen) => {
+      if (!seen) {
+        setShowFirstTime(true);
+      }
+      setChecked(true);
+    });
+  }, []);
+
+  async function handleFirstTimeClose(open: boolean) {
+    if (!open) {
+      await markAboutSeen();
+      setShowFirstTime(false);
+    }
+  }
+
+  if (!checked) return null;
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster position="top-center" />
+      <AboutDialog open={showFirstTime} onOpenChange={handleFirstTimeClose} />
     </QueryClientProvider>
   );
 }

@@ -5,6 +5,8 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Download, Upload, Trash2, Smartphone, Heart } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { AboutDialog } from "@/components/AboutDialog";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -25,6 +27,7 @@ function ProfilePage() {
   const todoCount = useLiveQuery(() => db.todos.count(), []);
   const sessionCount = useLiveQuery(() => db.sessions.count(), []);
   const goalCount = useLiveQuery(() => db.goals.count(), []);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   async function exportData() {
     const data = {
@@ -57,12 +60,7 @@ function ProfilePage() {
         const data = JSON.parse(await file.text());
         await db.transaction(
           "rw",
-          db.categories,
-          db.transactions,
-          db.todos,
-          db.sessions,
-          db.goals,
-          db.habitLogs,
+          [db.categories, db.transactions, db.todos, db.sessions, db.goals, db.habitLogs],
           async () => {
             if (data.categories) {
               await db.categories.clear();
@@ -102,11 +100,7 @@ function ProfilePage() {
     if (!confirm("Delete ALL data? This cannot be undone.")) return;
     await db.transaction(
       "rw",
-      db.transactions,
-      db.todos,
-      db.sessions,
-      db.goals,
-      db.habitLogs,
+      [db.transactions, db.todos, db.sessions, db.goals, db.habitLogs],
       async () => {
         await db.transactions.clear();
         await db.todos.clear();
@@ -187,10 +181,15 @@ function ProfilePage() {
             </div>
           </div>
         </div>
-        <div className="rounded-2xl bg-card p-4 text-center text-xs text-muted-foreground shadow-sm">
+        <button
+          onClick={() => setAboutOpen(true)}
+          className="w-full rounded-2xl bg-card p-4 text-center text-xs text-muted-foreground shadow-sm active:scale-[0.99] transition-transform"
+        >
           checkcheck v1.0
-        </div>
+        </button>
       </section>
+
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </AppShell>
   );
 }

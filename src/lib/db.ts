@@ -56,6 +56,7 @@ class AppDB extends Dexie {
   sessions!: Table<FocusSession, number>;
   goals!: Table<Goal, number>;
   habitLogs!: Table<HabitLog, number>;
+  settings!: Table<{ key: string; value: string }, string>;
 
   constructor() {
     super("checkcheck-app");
@@ -72,6 +73,15 @@ class AppDB extends Dexie {
       sessions: "++id, completedAt",
       goals: "++id, createdAt",
       habitLogs: "++id, goalId, date, [goalId+date]",
+    });
+    this.version(3).stores({
+      categories: "++id, type, name",
+      transactions: "++id, type, occurredAt, categoryId",
+      todos: "++id, done, createdAt",
+      sessions: "++id, completedAt",
+      goals: "++id, createdAt",
+      habitLogs: "++id, goalId, date, [goalId+date]",
+      settings: "key",
     });
   }
 }
