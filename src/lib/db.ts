@@ -25,6 +25,7 @@ export interface Todo {
   done: 0 | 1;
   createdAt: number;
   completedAt?: number;
+  recurring?: 0 | 1;
 }
 
 export interface FocusSession {
@@ -78,6 +79,15 @@ class AppDB extends Dexie {
       categories: "++id, type, name",
       transactions: "++id, type, occurredAt, categoryId",
       todos: "++id, done, createdAt",
+      sessions: "++id, completedAt",
+      goals: "++id, createdAt",
+      habitLogs: "++id, goalId, date, [goalId+date]",
+      settings: "key",
+    });
+    this.version(4).stores({
+      categories: "++id, type, name",
+      transactions: "++id, type, occurredAt, categoryId",
+      todos: "++id, done, createdAt, recurring",
       sessions: "++id, completedAt",
       goals: "++id, createdAt",
       habitLogs: "++id, goalId, date, [goalId+date]",

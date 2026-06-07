@@ -1,13 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { startOfDay, endOfDay, format } from "date-fns";
+import { startOfDay, endOfDay, format, subDays } from "date-fns";
 import { db } from "@/lib/db";
 import { AppShell, Fab } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Trash2, ListTodo, CheckCircle2, Circle } from "lucide-react";
+import { Check, Trash2, ListTodo, CheckCircle2, Circle, Repeat } from "lucide-react";
+import { toast } from "sonner";
+
+const EGG_RECURRING_KEY = "egg-recurring-unlocked";
+const EGG_CLICK_WINDOW = 2000;
+const EGG_CLICK_COUNT = 5;
 
 export const Route = createFileRoute("/todo")({
   head: () => ({
@@ -27,8 +32,51 @@ function TodoPage() {
   const [tab, setTab] = useState<"today" | "done">("today");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [recurring, setRecurring] = useState(false);
+  const [eggUnlocked, setEggUnlocked] = useState(false);
+  const eggClicksRef = useRef<number[]>([]);
 
   const todos = useLiveQuery(() => db.todos.orderBy("createdAt").reverse().toArray(), []);
+
+  useEffect(() => {
+    db.settings.get(EGG_RECURRING_KEY).then((entry) => {
+      if (entry?.value === "true") {
+        setEggUnlocked(true);
+      }
+    });
+  }, []);
+
+  const handleEggClick = useCallback(() => {
+    if (eggUnlocked) return;
+    const now = Date.now();
+    eggClicksRef.current = [...eggClicksRef.current.filter((t) => now - t < EGG_CLICK_WINDOW), now];
+    if (eggClicksRef.current.length >= EGG_CLICK_COUNT) {
+      setEggUnlocked(true);
+      db.settings.put({ key: EGG_RECURRING_KEY, value: "true" });
+      toast("Easter egg cracked!", { description: "Recurring todos unlocked." });
+      eggClicksRef.current = [];
+    }
+  }, [eggUnlocked]);
+
+  useEffect(() => {
+    async function seedRecurring() {
+      const allTodos = await db.todos.orderBy("createdAt").reverse().toArray();
+      const yesterday = startOfDay(subDays(new Date(), 1)).getTime();
+      const todayStart = startOfDay(new Date()).getTime();
+      const yesterdayTodos = allTodos.filter(
+        (t) => t.createdAt < todayStart && t.createdAt >= yesterday,
+      );
+      const recurringTodos = yesterdayTodos.filter((t) => t.recurring && !t.done);
+      const todayExisting = allTodos.filter((t) => t.createdAt >= todayStart);
+      for (const r of recurringTodos) {
+        const exists = todayExisting.some((t) => t.title === r.title && t.recurring);
+        if (!exists) {
+          await db.todos.add({ title: r.title, done: 0, createdAt: Date.now(), recurring: 1 });
+        }
+      }
+    }
+    seedRecurring();
+  }, []);
 
   const todayStart = startOfDay(new Date()).getTime();
   const todayEnd = endOfDay(new Date()).getTime();
@@ -42,8 +90,14 @@ function TodoPage() {
 
   async function add() {
     if (!title.trim()) return;
-    await db.todos.add({ title: title.trim(), done: 0, createdAt: Date.now() });
+    await db.todos.add({
+      title: title.trim(),
+      done: 0,
+      createdAt: Date.now(),
+      recurring: recurring ? 1 : 0,
+    });
     setTitle("");
+    setRecurring(false);
     setOpen(false);
   }
 
@@ -84,18 +138,32 @@ function TodoPage() {
         />
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2 rounded-full bg-muted p-1">
-        {(["today", "done"] as const).map((t) => (
+      <div className="mt-6 flex items-center gap-2">
+        <div className="flex flex-1 gap-2 rounded-full bg-muted p-1">
+          {(["today", "done"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 rounded-full py-2 text-sm font-semibold capitalize transition-colors ${
+                tab === t ? "bg-card shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {t === "today" ? "To do" : "Done"}
+            </button>
+          ))}
+        </div>
+        {tab === "done" && !eggUnlocked && (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-full py-2 text-sm font-semibold capitalize transition-colors ${
-              tab === t ? "bg-card shadow-sm" : "text-muted-foreground"
-            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEggClick();
+            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rotate-12 opacity-40 transition-all hover:opacity-70 active:scale-90 animate-pulse"
+            aria-label="???"
           >
-            {t === "today" ? "To do" : "Done"}
+            <img src="/easter-egg-3.png" alt="?" className="h-5 w-5" />
           </button>
-        ))}
+        )}
       </div>
 
       <ul className="mt-4 space-y-2">
@@ -124,6 +192,7 @@ function TodoPage() {
             >
               {t.title}
             </p>
+            {t.recurring === 1 && <Repeat className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
             <button
               onClick={() => db.todos.delete(t.id!)}
               aria-label="Delete"
@@ -150,6 +219,19 @@ function TodoPage() {
             placeholder="What needs to be done?"
             className="h-12 rounded-2xl"
           />
+          {eggUnlocked && (
+            <button
+              onClick={() => setRecurring(!recurring)}
+              className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+                recurring
+                  ? "bg-sky text-foreground shadow-md"
+                  : "bg-card text-muted-foreground shadow-sm"
+              }`}
+            >
+              <Repeat className="h-4 w-4" />
+              Recurring daily
+            </button>
+          )}
           <Button onClick={add} className="h-12 rounded-2xl text-base font-semibold">
             Add task
           </Button>
