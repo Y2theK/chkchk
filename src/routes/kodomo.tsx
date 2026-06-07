@@ -71,6 +71,16 @@ function KodomoPage() {
   const progress = ((total - remaining) / total) * 100;
 
   useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && audioCtxRef.current) {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  useEffect(() => {
     if (!running) return;
     intervalRef.current = setInterval(() => {
       setRemaining((r) => {
@@ -88,6 +98,7 @@ function KodomoPage() {
   }, [running, phase, preset]);
 
   function selectPreset(p: { focus: number; break: number; label: string }) {
+    primeAudio();
     setRunning(false);
     setPreset(p);
     setPhase("focus");
@@ -95,6 +106,7 @@ function KodomoPage() {
   }
 
   function saveCustom() {
+    primeAudio();
     const f = Math.max(1, Math.min(180, Math.round(editFocus)));
     const b = Math.max(1, Math.min(60, Math.round(editBreak)));
     const next = { focus: f, break: b, label: "Custom" };
@@ -138,7 +150,7 @@ function KodomoPage() {
     } catch {}
   }
 
-  function playChime() {
+  async function playChime() {
     try {
       const AC: typeof AudioContext =
         window.AudioContext ||
@@ -148,7 +160,7 @@ function KodomoPage() {
       }
       const ctx = audioCtxRef.current;
       if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
+        await ctx.resume();
       }
       const duration = 3;
       const now = ctx.currentTime;
@@ -200,17 +212,33 @@ function KodomoPage() {
     setRemaining(preset.focus * 60);
   }
 
+  function primeAudio() {
+    try {
+      const AC: typeof AudioContext =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AC();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+      // Play a very quiet, very short tone to actually "unlock" the audio pipeline in PWA
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 440;
+      gain.gain.value = 0.001; // nearly silent but real audio output
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.01);
+    } catch {}
+  }
+
   function toggle() {
     requestNotif();
-    const AC: typeof AudioContext =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AC();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume().catch(() => {});
-    }
+    primeAudio();
     setRunning((r) => !r);
   }
 

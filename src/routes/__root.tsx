@@ -8,10 +8,13 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "../components/ui/sonner";
+
+const isProduction = process.env.VERCEL === "1";
 
 function NotFoundComponent() {
   return (
@@ -151,6 +154,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {isProduction ? <Analytics /> : null}
         <HeadContent />
       </head>
       <body>
