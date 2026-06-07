@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { startOfDay } from "date-fns";
 import { db } from "@/lib/db";
@@ -37,6 +37,9 @@ const BUILTIN_PRESETS = [
 ];
 const CUSTOM_KEY = "ccc-custom-preset";
 const AUDIO_KEY = "focus-sound";
+const EGG_SOUND_KEY = "egg-sound-unlocked";
+const EGG_CLICK_WINDOW = 2000;
+const EGG_CLICK_COUNT = 5;
 const AUDIO_OPTIONS = [
   { id: "focus-1", label: "Chime 1" },
   { id: "focus-2", label: "Chime 2" },
@@ -69,6 +72,10 @@ function FocusPage() {
   const [running, setRunning] = useState(false);
   const [selectedAudio, setSelectedAudio] = useState("focus-1");
   const [soundOpen, setSoundOpen] = useState(false);
+  const [soundUnlocked, setSoundUnlocked] = useState(false);
+  const [previewCooldown, setPreviewCooldown] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const eggClicksRef = useRef<number[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
@@ -83,7 +90,30 @@ function FocusPage() {
         setSelectedAudio(entry.value);
       }
     });
+    db.settings.get(EGG_SOUND_KEY).then((entry) => {
+      if (entry?.value === "true") {
+        setSoundUnlocked(true);
+      }
+    });
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+    };
   }, []);
+
+  const handleEggClick = useCallback(() => {
+    if (soundUnlocked) return;
+    const now = Date.now();
+    eggClicksRef.current = [...eggClicksRef.current.filter((t) => now - t < EGG_CLICK_WINDOW), now];
+    if (eggClicksRef.current.length >= EGG_CLICK_COUNT) {
+      setSoundUnlocked(true);
+      db.settings.put({ key: EGG_SOUND_KEY, value: "true" });
+      toast("Easter egg cracked!", { description: "Sound picker unlocked." });
+      eggClicksRef.current = [];
+    }
+  }, [soundUnlocked]);
 
   const sessions = useLiveQuery(
     () => db.sessions.where("completedAt").above(startOfDay(new Date()).getTime()).toArray(),
@@ -100,15 +130,21 @@ function FocusPage() {
     audioRef.current = audio;
 
     const unlockAudio = () => {
+      if (audioUnlockedRef.current) return;
       audio.load();
+      const prevVol = audio.volume;
+      audio.volume = 0;
       audio
         .play()
         .then(() => {
           audioUnlockedRef.current = true;
           audio.pause();
           audio.currentTime = 0;
+          audio.volume = prevVol;
         })
-        .catch(() => {});
+        .catch(() => {
+          audio.volume = prevVol;
+        });
     };
 
     document.addEventListener("pointerdown", unlockAudio);
@@ -140,9 +176,26 @@ function FocusPage() {
   }
 
   function previewAudio(id: string) {
+    if (previewCooldown) return;
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
     const audio = new Audio(`/${id}.mp3`);
     audio.volume = 1.0;
+    previewAudioRef.current = audio;
+    setPreviewCooldown(true);
     audio.play().catch(() => {});
+    audio.onended = () => {
+      previewAudioRef.current = null;
+    };
+    setTimeout(() => {
+      if (previewAudioRef.current === audio) {
+        audio.pause();
+        previewAudioRef.current = null;
+      }
+      setPreviewCooldown(false);
+    }, 3000);
   }
 
   useEffect(() => {
@@ -290,14 +343,19 @@ function FocusPage() {
   function toggle() {
     ensureNotif();
     if (!audioUnlockedRef.current && audioRef.current) {
+      const prevVol = audioRef.current.volume;
+      audioRef.current.volume = 0;
       audioRef.current
         .play()
         .then(() => {
           audioUnlockedRef.current = true;
           audioRef.current!.pause();
           audioRef.current!.currentTime = 0;
+          audioRef.current!.volume = prevVol;
         })
-        .catch(() => {});
+        .catch(() => {
+          audioRef.current!.volume = prevVol;
+        });
     }
     setRunning((r) => !r);
   }
@@ -312,11 +370,23 @@ function FocusPage() {
   return (
     <AppShell>
       <header className="mb-5 flex items-center justify-between">
-        <div>
+        <div className="relative">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Focus
           </p>
           <h1 className="text-2xl font-bold">Focus Timer</h1>
+          {!soundUnlocked && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEggClick();
+              }}
+              className="absolute -right-6 top-0 rotate-12 opacity-40 transition-all hover:opacity-70 active:scale-90 animate-pulse"
+              aria-label="???"
+            >
+              <img src="/easter-egg-1.png" alt="?" className="h-5 w-5" />
+            </button>
+          )}
         </div>
         <div className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold shadow-sm">
           {sessions?.length ?? 0} today
@@ -395,7 +465,17 @@ function FocusPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={soundOpen} onOpenChange={setSoundOpen}>
+      <Dialog
+        open={soundOpen}
+        onOpenChange={(open) => {
+          if (!open && previewAudioRef.current) {
+            previewAudioRef.current.pause();
+            previewAudioRef.current = null;
+            setPreviewCooldown(false);
+          }
+          setSoundOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Choose Timer Sound</DialogTitle>
@@ -421,12 +501,13 @@ function FocusPage() {
                     size="sm"
                     variant={active ? "default" : "ghost"}
                     className={active ? "" : "text-muted-foreground"}
+                    disabled={previewCooldown}
                     onClick={(e) => {
                       e.stopPropagation();
                       previewAudio(opt.id);
                     }}
                   >
-                    Preview
+                    {previewCooldown ? "Wait 3 sec" : "Preview"}
                   </Button>
                 </button>
               );
@@ -479,13 +560,15 @@ function FocusPage() {
           >
             {running ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
           </button>
-          <button
-            onClick={() => setSoundOpen(true)}
-            aria-label="Choose sound"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
-          >
-            <Volume2 className="h-5 w-5" />
-          </button>
+          {soundUnlocked && (
+            <button
+              onClick={() => setSoundOpen(true)}
+              aria-label="Choose sound"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
+            >
+              <Volume2 className="h-5 w-5" />
+            </button>
+          )}
           <button
             onClick={requestNotif}
             aria-label="Enable notifications"

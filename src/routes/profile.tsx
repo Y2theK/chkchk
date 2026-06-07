@@ -37,6 +37,7 @@ function ProfilePage() {
       sessions: await db.sessions.toArray(),
       goals: await db.goals.toArray(),
       habitLogs: await db.habitLogs.toArray(),
+      settings: await db.settings.toArray(),
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -60,7 +61,7 @@ function ProfilePage() {
         const data = JSON.parse(await file.text());
         await db.transaction(
           "rw",
-          [db.categories, db.transactions, db.todos, db.sessions, db.goals, db.habitLogs],
+          [db.categories, db.transactions, db.todos, db.sessions, db.goals, db.habitLogs, db.settings],
           async () => {
             if (data.categories) {
               await db.categories.clear();
@@ -86,6 +87,10 @@ function ProfilePage() {
               await db.habitLogs.clear();
               await db.habitLogs.bulkAdd(data.habitLogs);
             }
+            if (data.settings) {
+              await db.settings.clear();
+              await db.settings.bulkAdd(data.settings);
+            }
           },
         );
         toast.success("Data restored");
@@ -100,13 +105,14 @@ function ProfilePage() {
     if (!confirm("Delete ALL data? This cannot be undone.")) return;
     await db.transaction(
       "rw",
-      [db.transactions, db.todos, db.sessions, db.goals, db.habitLogs],
+      [db.transactions, db.todos, db.sessions, db.goals, db.habitLogs, db.settings],
       async () => {
         await db.transactions.clear();
         await db.todos.clear();
         await db.sessions.clear();
         await db.goals.clear();
         await db.habitLogs.clear();
+        await db.settings.clear();
       },
     );
     toast.success("All data cleared");
@@ -155,6 +161,23 @@ function ProfilePage() {
           onClick={clearAll}
           destructive
         />
+      </section>
+
+      <section className="mt-6 space-y-2">
+        <h2 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Secrets
+        </h2>
+        <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <img src="/easter-day.png" alt="Easter Egg" className="mt-0.5 h-5 w-5" />
+            <div>
+              <p className="text-sm font-semibold">Easter Eggs</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Keep an eye out for hidden eggs across the app. Tap them 5 times quickly to crack them open and unlock secret features.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="mt-6 space-y-2">
