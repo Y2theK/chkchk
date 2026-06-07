@@ -29,7 +29,7 @@ export async function hasAboutBeenSeen(): Promise<boolean> {
 export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm rounded-3xl p-0 overflow-hidden">
+      <DialogContent className="max-w-sm w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl p-0">
         <DialogHeader className="px-6 pt-8 pb-4 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center">
             <img src="/icon-192.png" alt="checkcheck" className="h-16 w-16" />
