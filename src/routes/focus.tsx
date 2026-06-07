@@ -131,8 +131,6 @@ function FocusPage() {
 
     const unlockAudio = () => {
       if (audioUnlockedRef.current) return;
-      audio.load();
-      const prevVol = audio.volume;
       audio.volume = 0;
       audio
         .play()
@@ -140,10 +138,10 @@ function FocusPage() {
           audioUnlockedRef.current = true;
           audio.pause();
           audio.currentTime = 0;
-          audio.volume = prevVol;
+          audio.volume = 1.0;
         })
         .catch(() => {
-          audio.volume = prevVol;
+          audio.volume = 1.0;
         });
     };
 
@@ -276,7 +274,7 @@ function FocusPage() {
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = 0;
-    audio.load();
+    audio.volume = 1.0;
 
     const attemptPlay = (retriesLeft: number) => {
       const playPromise = audio.play();
@@ -342,21 +340,6 @@ function FocusPage() {
 
   function toggle() {
     ensureNotif();
-    if (!audioUnlockedRef.current && audioRef.current) {
-      const prevVol = audioRef.current.volume;
-      audioRef.current.volume = 0;
-      audioRef.current
-        .play()
-        .then(() => {
-          audioUnlockedRef.current = true;
-          audioRef.current!.pause();
-          audioRef.current!.currentTime = 0;
-          audioRef.current!.volume = prevVol;
-        })
-        .catch(() => {
-          audioRef.current!.volume = prevVol;
-        });
-    }
     setRunning((r) => !r);
   }
 
