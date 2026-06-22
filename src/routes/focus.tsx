@@ -720,22 +720,22 @@ function FocusPage() {
               <button
                 onClick={() => setBgOpen(true)}
                 aria-label="Change background sound"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground/50 shadow-sm active:scale-95 hover:text-muted-foreground"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
               >
-                <Settings2 className="h-4 w-4" />
+                <Settings2 className="h-5 w-5" />
+              </button>
+            )}
+
+            {soundUnlocked && (
+              <button
+                onClick={() => setSoundOpen(true)}
+                aria-label="Choose sound"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
+              >
+                <Music2 className="h-5 w-5" />
               </button>
             )}
           </div>
-
-          {soundUnlocked && (
-            <button
-              onClick={() => setSoundOpen(true)}
-              aria-label="Choose sound"
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
-            >
-              <Music2 className="h-5 w-5" />
-            </button>
-          )}
         </div>
 
         <p className="mt-6 max-w-xs text-center text-xs text-muted-foreground">
