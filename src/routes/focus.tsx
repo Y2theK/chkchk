@@ -4,7 +4,18 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { startOfDay } from "date-fns";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/AppShell";
-import { Play, Pause, RotateCcw, Bell, Volume2, Pencil } from "lucide-react";
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Bell,
+  Volume2,
+  VolumeX,
+  Headphones,
+  Settings2,
+  Music2,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -48,6 +59,16 @@ const AUDIO_OPTIONS = [
   { id: "focus-5", label: "Chime 5" },
 ];
 
+const BG_AUDIO_OPTIONS = [
+  { id: "bg-1", label: "Ambient 1" },
+  { id: "bg-2", label: "Ambient 2" },
+  { id: "bg-3", label: "Ambient 3" },
+  { id: "bg-4", label: "Ambient 4" },
+  { id: "bg-5", label: "Ambient 5" },
+  { id: "bg-6", label: "Ambient Special :3" },
+];
+const BG_AUDIO_KEY = "focus-bg-sound";
+
 type Phase = "focus" | "break";
 
 function FocusPage() {
@@ -83,6 +104,10 @@ function FocusPage() {
   const presetRef = useRef(presets[2]);
   phaseRef.current = phase;
   presetRef.current = preset;
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [bgMusicId, setBgMusicId] = useState("");
+  const [bgPlaying, setBgPlaying] = useState(false);
+  const [bgOpen, setBgOpen] = useState(false);
 
   useEffect(() => {
     db.settings.get(AUDIO_KEY).then((entry) => {
@@ -93,6 +118,11 @@ function FocusPage() {
     db.settings.get(EGG_SOUND_KEY).then((entry) => {
       if (entry?.value === "true") {
         setSoundUnlocked(true);
+      }
+    });
+    db.settings.get(BG_AUDIO_KEY).then((entry) => {
+      if (entry?.value) {
+        setBgMusicId(entry.value);
       }
     });
     return () => {
@@ -167,6 +197,40 @@ function FocusPage() {
       audioRef.current = null;
     };
   }, [selectedAudio]);
+
+  useEffect(() => {
+    if (!bgMusicId) {
+      if (bgAudioRef.current) {
+        bgAudioRef.current.pause();
+        bgAudioRef.current.src = "";
+        bgAudioRef.current = null;
+      }
+      setBgPlaying(false);
+      return;
+    }
+    const audio = new Audio(`/${bgMusicId}.mp3`);
+    audio.preload = "auto";
+    audio.volume = 0.2;
+    audio.loop = true;
+    bgAudioRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.src = "";
+      bgAudioRef.current = null;
+    };
+  }, [bgMusicId]);
+
+  useEffect(() => {
+    const audio = bgAudioRef.current;
+    if (!audio || !bgMusicId) return;
+    if (running && phase === "focus") {
+      audio.play().catch(() => {});
+      setBgPlaying(true);
+    } else {
+      audio.pause();
+      setBgPlaying(false);
+    }
+  }, [running, phase, bgMusicId]);
 
   function selectAudio(id: string) {
     setSelectedAudio(id);
@@ -343,6 +407,23 @@ function FocusPage() {
     setRunning((r) => !r);
   }
 
+  function toggleBgMusic() {
+    const audio = bgAudioRef.current;
+    if (!audio || !bgMusicId) return;
+    if (audio.paused) {
+      audio.play().catch(() => {});
+      setBgPlaying(true);
+    } else {
+      audio.pause();
+      setBgPlaying(false);
+    }
+  }
+
+  function selectBgAudio(id: string) {
+    setBgMusicId(id);
+    db.settings.put({ key: BG_AUDIO_KEY, value: id });
+  }
+
   const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
   const ss = String(remaining % 60).padStart(2, "0");
 
@@ -477,7 +558,7 @@ function FocusPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Volume2 className="h-5 w-5" />
+                    <Music2 className="h-5 w-5" />
                     <span className="font-medium">{opt.label}</span>
                   </div>
                   <Button
@@ -498,6 +579,66 @@ function FocusPage() {
           </div>
           <DialogFooter>
             <Button onClick={() => setSoundOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bgOpen} onOpenChange={setBgOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Background Sound</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <button
+              onClick={() => {
+                selectBgAudio("");
+                setBgOpen(false);
+              }}
+              className={`flex items-center rounded-xl p-3 transition-all ${
+                !bgMusicId
+                  ? "bg-sky text-foreground shadow-md"
+                  : "bg-card text-muted-foreground shadow-sm hover:bg-accent"
+              }`}
+            >
+              <span className="font-medium">None (Off)</span>
+            </button>
+            {BG_AUDIO_OPTIONS.map((opt) => {
+              const active = opt.id === bgMusicId;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => {
+                    selectBgAudio(opt.id);
+                    setBgOpen(false);
+                  }}
+                  className={`flex items-center justify-between rounded-xl p-3 transition-all ${
+                    active
+                      ? "bg-sky text-foreground shadow-md"
+                      : "bg-card text-muted-foreground shadow-sm hover:bg-accent"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Volume2 className="h-5 w-5" />
+                    <span className="font-medium">{opt.label}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={active ? "default" : "ghost"}
+                    className={active ? "" : "text-muted-foreground"}
+                    disabled={previewCooldown}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      previewAudio(opt.id);
+                    }}
+                  >
+                    {previewCooldown ? "Wait 3 sec" : "Preview"}
+                  </Button>
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setBgOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -531,34 +672,70 @@ function FocusPage() {
 
         <div className="mt-8 flex items-center gap-4">
           <button
-            onClick={reset}
-            aria-label="Reset"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
-          >
-            <RotateCcw className="h-5 w-5" />
-          </button>
-          <button
-            onClick={toggle}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-sky text-foreground shadow-lg shadow-sky/40 active:scale-95"
-          >
-            {running ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
-          </button>
-          {soundUnlocked && (
-            <button
-              onClick={() => setSoundOpen(true)}
-              aria-label="Choose sound"
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
-            >
-              <Volume2 className="h-5 w-5" />
-            </button>
-          )}
-          <button
             onClick={requestNotif}
             aria-label="Enable notifications"
             className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
           >
             <Bell className="h-5 w-5" />
           </button>
+          <button
+            onClick={reset}
+            aria-label="Reset"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
+          >
+            <RotateCcw className="h-5 w-5" />
+          </button>
+
+          <button
+            onClick={toggle}
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-sky text-foreground shadow-lg shadow-sky/40 active:scale-95"
+          >
+            {running ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
+          </button>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={bgMusicId ? toggleBgMusic : () => setBgOpen(true)}
+              aria-label={bgMusicId ? "Toggle background sound" : "Choose background sound"}
+              className={`flex h-12 w-12 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 ${
+                bgMusicId && bgPlaying
+                  ? "text-sky"
+                  : bgMusicId
+                    ? "text-muted-foreground"
+                    : "text-muted-foreground/50"
+              }`}
+            >
+              {bgMusicId ? (
+                bgPlaying ? (
+                  <Volume2 className="h-5 w-5" />
+                ) : (
+                  <VolumeX className="h-5 w-5" />
+                )
+              ) : (
+                <Headphones className="h-5 w-5" />
+              )}
+            </button>
+
+            {bgMusicId && (
+              <button
+                onClick={() => setBgOpen(true)}
+                aria-label="Change background sound"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground/50 shadow-sm active:scale-95 hover:text-muted-foreground"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {soundUnlocked && (
+            <button
+              onClick={() => setSoundOpen(true)}
+              aria-label="Choose sound"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm active:scale-95"
+            >
+              <Music2 className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
         <p className="mt-6 max-w-xs text-center text-xs text-muted-foreground">
