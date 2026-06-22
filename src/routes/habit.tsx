@@ -439,7 +439,7 @@ function AnalyticsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-3xl">
+      <DialogContent className="max-w-sm rounded-3xl">
         <DialogHeader>
           <DialogTitle>Your Consistency</DialogTitle>
         </DialogHeader>
@@ -450,7 +450,7 @@ function AnalyticsDialog({
               Last 7 days
             </p>
             <ResponsiveContainer width="100%" height={120}>
-              <AreaChart data={trendData} margin={{ left: -30 }}>
+              <AreaChart data={trendData} margin={{ left: -30, right: 30 }}>
                 <defs>
                   <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--sky)" stopOpacity={0.3} />
@@ -490,7 +490,7 @@ function AnalyticsDialog({
               By day of week
             </p>
             <ResponsiveContainer width="100%" height={100}>
-              <BarChart data={dayOfWeekData} margin={{ left: -20, right: -20 }}>
+              <BarChart data={dayOfWeekData} margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--muted)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip
