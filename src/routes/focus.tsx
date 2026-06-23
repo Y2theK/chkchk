@@ -492,7 +492,7 @@ function FocusPage() {
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm w-[95vw] rounded-3xl">
           <DialogHeader>
             <DialogTitle>Edit Custom Timer</DialogTitle>
           </DialogHeader>
@@ -540,7 +540,7 @@ function FocusPage() {
           setSoundOpen(open);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-sm w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl">
           <DialogHeader>
             <DialogTitle>Choose Timer Sound</DialogTitle>
           </DialogHeader>
@@ -584,7 +584,7 @@ function FocusPage() {
       </Dialog>
 
       <Dialog open={bgOpen} onOpenChange={setBgOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl">
           <DialogHeader>
             <DialogTitle>Background Sound</DialogTitle>
           </DialogHeader>
