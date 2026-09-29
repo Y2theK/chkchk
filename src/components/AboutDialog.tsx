@@ -49,8 +49,8 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
           </p>
           <Feature
             icon={<Wallet className="h-5 w-5 text-peach" strokeWidth={2.2} />}
-            title="Expense"
-            desc="Track income and expenses"
+            title="Wallet"
+            desc="Track income and spending"
           />
           <Feature
             icon={<ListChecks className="h-5 w-5 text-sky" strokeWidth={2.2} />}

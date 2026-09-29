@@ -9,13 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as TodoRouteImport } from './routes/todo'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as HabitRouteImport } from './routes/habit'
 import { Route as FocusRouteImport } from './routes/focus'
-import { Route as ExpenseRouteImport } from './routes/expense'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TodoRoute = TodoRouteImport.update({
   id: '/todo',
   path: '/todo',
@@ -36,11 +41,6 @@ const FocusRoute = FocusRouteImport.update({
   path: '/focus',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExpenseRoute = ExpenseRouteImport.update({
-  id: '/expense',
-  path: '/expense',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,48 +49,55 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/expense': typeof ExpenseRoute
   '/focus': typeof FocusRoute
   '/habit': typeof HabitRoute
   '/profile': typeof ProfileRoute
   '/todo': typeof TodoRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/expense': typeof ExpenseRoute
   '/focus': typeof FocusRoute
   '/habit': typeof HabitRoute
   '/profile': typeof ProfileRoute
   '/todo': typeof TodoRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/expense': typeof ExpenseRoute
   '/focus': typeof FocusRoute
   '/habit': typeof HabitRoute
   '/profile': typeof ProfileRoute
   '/todo': typeof TodoRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/expense' | '/focus' | '/habit' | '/profile' | '/todo'
+  fullPaths: '/' | '/focus' | '/habit' | '/profile' | '/todo' | '/wallet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/expense' | '/focus' | '/habit' | '/profile' | '/todo'
-  id: '__root__' | '/' | '/expense' | '/focus' | '/habit' | '/profile' | '/todo'
+  to: '/' | '/focus' | '/habit' | '/profile' | '/todo' | '/wallet'
+  id: '__root__' | '/' | '/focus' | '/habit' | '/profile' | '/todo' | '/wallet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ExpenseRoute: typeof ExpenseRoute
   FocusRoute: typeof FocusRoute
   HabitRoute: typeof HabitRoute
   ProfileRoute: typeof ProfileRoute
   TodoRoute: typeof TodoRoute
+  WalletRoute: typeof WalletRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/todo': {
       id: '/todo'
       path: '/todo'
@@ -119,13 +126,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FocusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/expense': {
-      id: '/expense'
-      path: '/expense'
-      fullPath: '/expense'
-      preLoaderRoute: typeof ExpenseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -138,11 +138,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ExpenseRoute: ExpenseRoute,
   FocusRoute: FocusRoute,
   HabitRoute: HabitRoute,
   ProfileRoute: ProfileRoute,
   TodoRoute: TodoRoute,
+  WalletRoute: WalletRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

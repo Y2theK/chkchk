@@ -3,7 +3,7 @@ import { Wallet, ListChecks, Timer, User, Target } from "lucide-react";
 import type { ReactNode } from "react";
 
 const tabs = [
-  { to: "/expense", label: "Expense", icon: Wallet },
+  { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/todo", label: "Todo", icon: ListChecks },
   { to: "/focus", label: "Focus", icon: Timer },
   { to: "/habit", label: "Habit", icon: Target },

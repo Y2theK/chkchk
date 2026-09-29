@@ -16,8 +16,9 @@ import {
   Line,
   CartesianGrid,
 } from "recharts";
-import { db, ensureSeed, type TxType } from "@/lib/db";
+import { db, ensureSeed, type Transaction, type TxType } from "@/lib/db";
 import { AppShell, Fab } from "@/components/AppShell";
+import { SwipeRow } from "@/components/SwipeRow";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,18 +26,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/expense")({
+export const Route = createFileRoute("/wallet")({
   head: () => ({
     meta: [
-      { title: "Expenses — checkcheck" },
+      { title: "Wallet — checkcheck" },
       {
         name: "description",
         content:
-          "Track and visualize your daily expenses by category. See spending trends with charts and bar graphs.",
+          "Track and visualize your income and spending by category. See money trends with charts and bar graphs.",
       },
     ],
   }),
-  component: ExpensePage,
+  component: WalletPage,
 });
 
 const EGG_CHART_KEY = "egg-chart-unlocked";
@@ -45,7 +46,7 @@ const EGG_CLICK_COUNT = 5;
 
 const fmt = (n: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n);
 
-function ExpensePage() {
+function WalletPage() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [open, setOpen] = useState(false);
   const [chartUnlocked, setChartUnlocked] = useState(false);
@@ -130,6 +131,18 @@ function ExpensePage() {
     return Array.from(groups.entries());
   }, [transactions]);
 
+  const deleteTx = useCallback(async (t: Transaction) => {
+    await db.transactions.delete(t.id!);
+    toast("Transaction deleted", {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          await db.transactions.put(t);
+        },
+      },
+    });
+  }, []);
+
   return (
     <AppShell>
       <header className="mb-5 flex items-center justify-between">
@@ -137,7 +150,7 @@ function ExpensePage() {
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Overview
           </p>
-          <h1 className="text-2xl font-bold">Expenses</h1>
+          <h1 className="text-2xl font-bold">Wallet</h1>
         </div>
         <div className="flex items-center gap-1 rounded-full bg-card px-2 py-1 shadow-sm">
           <button
@@ -313,26 +326,31 @@ function ExpensePage() {
                   {(items ?? []).map((t) => {
                     const cat = categories?.find((c) => c.id === t.categoryId);
                     return (
-                      <li
-                        key={t.id}
-                        className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm"
-                      >
-                        <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold"
-                          style={{ background: `${cat?.color}22`, color: cat?.color }}
+                      <li key={t.id}>
+                        <SwipeRow
+                          onDelete={() => deleteTx(t)}
+                          deleteLabel="Delete transaction"
+                          className="shadow-sm"
                         >
-                          {(cat?.name ?? "?").slice(0, 1).toUpperCase()}
-                        </span>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">{cat?.name ?? "Other"}</p>
-                          {t.note && <p className="text-xs text-muted-foreground">{t.note}</p>}
-                        </div>
-                        <span
-                          className={`text-sm font-bold ${t.type === "income" ? "text-income" : "text-expense"}`}
-                        >
-                          {t.type === "income" ? "+" : "−"}
-                          {fmt(t.amount)}
-                        </span>
+                          <div className="flex items-center gap-3 p-3">
+                            <span
+                              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold"
+                              style={{ background: `${cat?.color}22`, color: cat?.color }}
+                            >
+                              {(cat?.name ?? "?").slice(0, 1).toUpperCase()}
+                            </span>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold">{cat?.name ?? "Other"}</p>
+                              {t.note && <p className="text-xs text-muted-foreground">{t.note}</p>}
+                            </div>
+                            <span
+                              className={`text-sm font-bold ${t.type === "income" ? "text-income" : "text-expense"}`}
+                            >
+                              {t.type === "income" ? "+" : "−"}
+                              {fmt(t.amount)}
+                            </span>
+                          </div>
+                        </SwipeRow>
                       </li>
                     );
                   })}

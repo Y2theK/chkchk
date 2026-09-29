@@ -89,12 +89,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "checkcheck (chkchk) is a fast, offline-first productivity app to track expenses, build habit streaks, manage tasks, and run focus sessions — no signup, no server, works in your browser.",
+          "checkcheck (chkchk) is a fast, offline-first productivity app to track income and spending, build habit streaks, manage tasks, and run focus sessions — no signup, no server, works in your browser.",
       },
       {
         name: "keywords",
         content:
-          "expense tracker, habit tracker, todo list, pomodoro timer, focus sessions, offline app, productivity, money management, streak tracker",
+          "budget tracker, expense tracker, income tracker, habit tracker, todo list, pomodoro timer, focus sessions, offline app, productivity, money management, streak tracker",
       },
       { name: "author", content: "checkcheck" },
       { name: "robots", content: "index, follow" },
@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "checkcheck (chkchk) is a fast, offline-first productivity app to track expenses, build habit streaks, manage tasks, and run focus sessions — no signup, no server, works in your browser.",
+          "checkcheck (chkchk) is a fast, offline-first productivity app to track income and spending, build habit streaks, manage tasks, and run focus sessions — no signup, no server, works in your browser.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "checkcheck" },
@@ -116,7 +116,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "checkcheck (chkchk) is a fast, offline-first productivity app to track expenses, build habit streaks, manage tasks, and run focus sessions — no signup, no server, works in your browser.",
+          "checkcheck (chkchk) is a fast, offline-first productivity app to track income and spending, build habit streaks, manage tasks, and run focus sessions — no signup, no server, works in your browser.",
       },
       {
         property: "og:image",

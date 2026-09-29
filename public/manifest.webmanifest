@@ -1,7 +1,7 @@
 {
   "name": "checkcheck — Money, Habit, Tasks, Focus",
   "short_name": "chkchk",
-  "description": "Track expenses, build habits, manage tasks, and run focus sessions — all offline.",
+  "description": "Track income and spending, build habits, manage tasks, and run focus sessions — all offline.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

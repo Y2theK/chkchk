@@ -12,7 +12,7 @@
 
 | Section | Description |
 |---------|-------------|
-| **Expense** | Track income and expenses with categories, bar charts, pie charts, and monthly views |
+| **Wallet** | Track income and spending with categories, swipe-to-delete transactions, undo, bar charts, pie charts, and monthly views |
 | **Todo** | Manage daily tasks with toggle-done functionality and today/done tabs |
 | **Habit** | Build daily habit streaks with visual progress grids, configurable duration (7/21/30/66/100 days) |
 | **Focus** | Pomodoro-style focus timer with presets, audio chime, browser notifications, and session tracking |
@@ -89,7 +89,7 @@ chkchk/
 │   ├── routes/
 │   │   ├── __root.tsx   # Root layout with providers, meta tags, PWA manifest
 │   │   ├── index.tsx    # Redirects to /habit
-│   │   ├── expense.tsx  # Expense tracking page
+│   │   ├── wallet.tsx  # Wallet (income & spending) page
 │   │   ├── todo.tsx     # Todo list page
 │   │   ├── habit.tsx    # Habit streak tracker page
 │   │   ├── focus.tsx   # Focus timer page
