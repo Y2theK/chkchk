@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { startOfDay, endOfDay, format, subDays } from "date-fns";
-import { db } from "@/lib/db";
+import { db, type Todo } from "@/lib/db";
 import { AppShell, Fab } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ function TodoPage() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [recurring, setRecurring] = useState(false);
+  const [editing, setEditing] = useState<Todo | null>(null);
   const [eggUnlocked, setEggUnlocked] = useState(false);
   const eggClicksRef = useRef<number[]>([]);
 
@@ -89,22 +90,62 @@ function TodoPage() {
   const list = tab === "today" ? pending : done;
 
   async function add() {
-    if (!title.trim()) return;
-    await db.todos.add({
-      title: title.trim(),
-      done: 0,
-      createdAt: Date.now(),
-      recurring: recurring ? 1 : 0,
-    });
+    const trimmed = title.trim();
+    if (!trimmed) {
+      toast.error("Enter a task");
+      return;
+    }
+    if (editing?.id) {
+      await db.todos.update(editing.id, {
+        title: trimmed,
+        recurring: recurring ? 1 : 0,
+      });
+      toast.success("Task updated");
+    } else {
+      await db.todos.add({
+        title: trimmed,
+        done: 0,
+        createdAt: Date.now(),
+        recurring: recurring ? 1 : 0,
+      });
+      toast.success("Task added");
+    }
     setTitle("");
     setRecurring(false);
+    setEditing(null);
     setOpen(false);
+  }
+
+  function openNew() {
+    setEditing(null);
+    setTitle("");
+    setRecurring(false);
+    setOpen(true);
+  }
+
+  function openEdit(t: Todo) {
+    setEditing(t);
+    setTitle(t.title);
+    setRecurring(t.recurring === 1);
+    setOpen(true);
   }
 
   async function toggle(id: number, current: 0 | 1) {
     await db.todos.update(id, {
       done: current ? 0 : 1,
       completedAt: current ? undefined : Date.now(),
+    });
+  }
+
+  async function remove(t: Todo) {
+    await db.todos.delete(t.id!);
+    toast("Task deleted", {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          await db.todos.put(t);
+        },
+      },
     });
   }
 
@@ -178,23 +219,31 @@ function TodoPage() {
           <li key={t.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm">
             <button
               onClick={() => toggle(t.id!, t.done)}
-              aria-label="Toggle"
+              role="checkbox"
+              aria-checked={t.done === 1}
+              aria-label={t.title}
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                 t.done ? "border-income bg-income text-white" : "border-border bg-transparent"
               }`}
             >
               {t.done ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
             </button>
-            <p
-              className={`flex-1 text-sm font-medium ${
-                t.done ? "text-muted-foreground line-through" : ""
-              }`}
-            >
-              {t.title}
-            </p>
-            {t.recurring === 1 && <Repeat className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
             <button
-              onClick={() => db.todos.delete(t.id!)}
+              onClick={() => openEdit(t)}
+              className="min-w-0 flex-1 text-left"
+              aria-label={`Edit ${t.title}`}
+            >
+              <p
+                className={`truncate text-sm font-medium ${
+                  t.done ? "text-muted-foreground line-through" : ""
+                }`}
+              >
+                {t.title}
+              </p>
+            </button>
+            {t.recurring === 1 && <Repeat className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+            <button
+              onClick={() => remove(t)}
               aria-label="Delete"
               className="p-1 text-muted-foreground hover:text-expense"
             >
@@ -204,12 +253,12 @@ function TodoPage() {
         ))}
       </ul>
 
-      <Fab onClick={() => setOpen(true)} label="Add todo" />
+      <Fab onClick={openNew} label="Add todo" />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle>New task</DialogTitle>
+            <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
           </DialogHeader>
           <Input
             autoFocus
@@ -222,9 +271,11 @@ function TodoPage() {
           {eggUnlocked && (
             <button
               onClick={() => setRecurring(!recurring)}
+              role="checkbox"
+              aria-checked={recurring}
               className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
                 recurring
-                  ? "bg-sky text-foreground shadow-md"
+                  ? "bg-sky text-sky-foreground shadow-md"
                   : "bg-card text-muted-foreground shadow-sm"
               }`}
             >
@@ -233,7 +284,7 @@ function TodoPage() {
             </button>
           )}
           <Button onClick={add} className="h-12 rounded-2xl text-base font-semibold">
-            Add task
+            {editing ? "Save changes" : "Add task"}
           </Button>
         </DialogContent>
       </Dialog>

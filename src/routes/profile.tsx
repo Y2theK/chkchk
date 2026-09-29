@@ -3,10 +3,22 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Download, Upload, Trash2, Smartphone, Heart, CircleHelp } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Download, Upload, Trash2, Smartphone, Heart, CircleHelp, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { AboutDialog } from "@/components/AboutDialog";
+import { THEME_STORAGE_KEY, useTheme } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -28,8 +40,16 @@ function ProfilePage() {
   const sessionCount = useLiveQuery(() => db.sessions.count(), []);
   const goalCount = useLiveQuery(() => db.goals.count(), []);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const { setPreference } = useTheme();
 
   async function exportData() {
+    let theme: string | null = null;
+    try {
+      theme = localStorage.getItem(THEME_STORAGE_KEY);
+    } catch {
+      // ignore storage errors
+    }
     const data = {
       categories: await db.categories.toArray(),
       transactions: await db.transactions.toArray(),
@@ -38,6 +58,7 @@ function ProfilePage() {
       goals: await db.goals.toArray(),
       habitLogs: await db.habitLogs.toArray(),
       settings: await db.settings.toArray(),
+      theme,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -101,6 +122,13 @@ function ProfilePage() {
             }
           },
         );
+        if (data.theme === "light" || data.theme === "dark") {
+          setPreference(data.theme);
+        } else {
+          // A null (or absent) theme means the backup was taken in system mode.
+          // Reset explicitly instead of leaving the current preference behind.
+          setPreference("system");
+        }
         toast.success("Data restored");
       } catch (e) {
         toast.error("Invalid backup file");
@@ -110,7 +138,6 @@ function ProfilePage() {
   }
 
   async function clearAll() {
-    if (!confirm("Delete ALL data? This cannot be undone.")) return;
     await db.transaction(
       "rw",
       [db.transactions, db.todos, db.sessions, db.goals, db.habitLogs, db.settings],
@@ -123,6 +150,7 @@ function ProfilePage() {
         await db.settings.clear();
       },
     );
+    setClearOpen(false);
     toast.success("All data cleared");
   }
 
@@ -155,6 +183,19 @@ function ProfilePage() {
 
       <section className="mt-6 space-y-2">
         <h2 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Appearance
+        </h2>
+        <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Palette className="h-4 w-4" />
+            Theme
+          </div>
+          <ThemeToggle />
+        </div>
+      </section>
+
+      <section className="mt-6 space-y-2">
+        <h2 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Data
         </h2>
         <Row icon={<Download className="h-5 w-5" />} label="Export backup" onClick={exportData} />
@@ -166,7 +207,7 @@ function ProfilePage() {
         <Row
           icon={<Trash2 className="h-5 w-5 text-expense" />}
           label="Clear all data"
-          onClick={clearAll}
+          onClick={() => setClearOpen(true)}
           destructive
         />
       </section>
@@ -223,6 +264,27 @@ function ProfilePage() {
       </section>
 
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent className="max-w-sm rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all data?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes every transaction, task, habit, and focus session from this
+              device. It cannot be undone — export a backup first if you might want it back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-2xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={clearAll}
+              className="rounded-2xl bg-expense text-white hover:opacity-90"
+            >
+              Delete everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

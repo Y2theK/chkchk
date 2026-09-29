@@ -10,9 +10,11 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { AboutDialog, hasAboutBeenSeen, markAboutSeen } from "@/components/AboutDialog";
+import { ThemeProvider, themeInitScript } from "@/components/ThemeProvider";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { registerServiceWorker } from "../lib/pwa";
 import { Toaster } from "../components/ui/sonner";
 
 const isProduction = process.env.VERCEL === "1";
@@ -98,7 +100,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "author", content: "checkcheck" },
       { name: "robots", content: "index, follow" },
-      { name: "theme-color", content: "#7dd3fc" },
+      { name: "color-scheme", content: "light dark" },
+      { name: "theme-color", content: "#f7fbff", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#0b1120", media: "(prefers-color-scheme: dark)" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "chkchk" },
@@ -153,8 +157,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: themeInitScript mutates <html> before hydration.
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {isProduction ? <Analytics /> : null}
         <HeadContent />
       </head>
@@ -172,6 +178,7 @@ function RootComponent() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    registerServiceWorker();
     hasAboutBeenSeen().then((seen) => {
       if (!seen) {
         setShowFirstTime(true);
@@ -190,10 +197,12 @@ function RootComponent() {
   if (!checked) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster position="top-center" />
-      <AboutDialog open={showFirstTime} onOpenChange={handleFirstTimeClose} />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Toaster position="top-center" />
+        <AboutDialog open={showFirstTime} onOpenChange={handleFirstTimeClose} />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

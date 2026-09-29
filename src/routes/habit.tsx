@@ -16,7 +16,17 @@ import { AppShell, Fab } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Target, Flame, CheckCircle2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Target, Flame, CheckCircle2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   AreaChart,
@@ -57,6 +67,8 @@ const todayStr = () => format(new Date(), "yyyy-MM-dd");
 
 function HabitPage() {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Goal | null>(null);
+  const [deleting, setDeleting] = useState<Goal | null>(null);
   const [eggOpen, setEggOpen] = useState(false);
   const [eggUnlocked, setEggUnlocked] = useState(false);
   const eggClicksRef = useRef<number[]>([]);
@@ -109,6 +121,37 @@ function HabitPage() {
     return { activeGoals, doneToday };
   }, [goals, logsByGoal]);
 
+  function openNew() {
+    setEditing(null);
+    setOpen(true);
+  }
+
+  function openEdit(goal: Goal) {
+    setEditing(goal);
+    setOpen(true);
+  }
+
+  async function deleteGoal(goal: Goal) {
+    const removedLogs = await db.transaction("rw", [db.goals, db.habitLogs], async () => {
+      const logs = await db.habitLogs.where("goalId").equals(goal.id!).toArray();
+      await db.habitLogs.where("goalId").equals(goal.id!).delete();
+      await db.goals.delete(goal.id!);
+      return logs;
+    });
+    setDeleting(null);
+    toast("Habit deleted", {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          await db.transaction("rw", [db.goals, db.habitLogs], async () => {
+            await db.goals.put(goal);
+            if (removedLogs.length) await db.habitLogs.bulkPut(removedLogs);
+          });
+        },
+      },
+    });
+  }
+
   return (
     <AppShell>
       <header className="mb-5">
@@ -152,7 +195,7 @@ function HabitPage() {
       {eggUnlocked && (
         <button
           onClick={() => setEggOpen(true)}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-3xl bg-peach p-3 text-background shadow-sm active:scale-[0.98]"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-3xl bg-peach p-3 text-peach-foreground shadow-sm active:scale-[0.98]"
           aria-label="Analytics"
         >
           <Flame className="h-5 w-5" />
@@ -168,23 +211,65 @@ function HabitPage() {
           </div>
         )}
         {(goals ?? []).map((g) => (
-          <GoalCard key={g.id} goal={g} done={logsByGoal.get(g.id!) ?? new Set()} />
+          <GoalCard
+            key={g.id}
+            goal={g}
+            done={logsByGoal.get(g.id!) ?? new Set()}
+            onEdit={() => openEdit(g)}
+            onDelete={() => setDeleting(g)}
+          />
         ))}
       </section>
 
-      <Fab onClick={() => setOpen(true)} label="Add habit" />
-      <AddGoalDialog open={open} onOpenChange={setOpen} />
+      <Fab onClick={openNew} label="Add habit" />
+      <GoalDialog
+        open={open}
+        onOpenChange={setOpen}
+        editing={editing}
+        onDone={() => setEditing(null)}
+      />
       <AnalyticsDialog
         open={eggOpen}
         onOpenChange={setEggOpen}
         goals={goals ?? []}
         logs={logs ?? []}
       />
+
+      <AlertDialog open={deleting !== null} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent className="max-w-sm rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{deleting?.title}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the habit and all of its check-in history. You can undo it from the
+              notification right after.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-2xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleting && deleteGoal(deleting)}
+              className="rounded-2xl bg-expense text-white hover:opacity-90"
+            >
+              Delete habit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
 
-function GoalCard({ goal, done }: { goal: Goal; done: Set<string> }) {
+function GoalCard({
+  goal,
+  done,
+  onEdit,
+  onDelete,
+}: {
+  goal: Goal;
+  done: Set<string>;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const start = parseISO(goal.startDate);
   const today = new Date();
   const dayIndex = Math.max(0, differenceInCalendarDays(today, start));
@@ -224,17 +309,22 @@ function GoalCard({ goal, done }: { goal: Goal; done: Set<string> }) {
             <span>{pct}%</span>
           </div>
         </div>
-        <button
-          onClick={async () => {
-            if (!confirm(`Delete "${goal.title}"?`)) return;
-            await db.habitLogs.where("goalId").equals(goal.id!).delete();
-            await db.goals.delete(goal.id!);
-          }}
-          aria-label="Delete habit"
-          className="p-1 text-muted-foreground hover:text-expense"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={onEdit}
+            aria-label={`Edit ${goal.title}`}
+            className="p-1 text-muted-foreground hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            aria-label={`Delete ${goal.title}`}
+            className="p-1 text-muted-foreground hover:text-expense"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(18px,1fr))] gap-1.5">
@@ -269,31 +359,62 @@ function GoalCard({ goal, done }: { goal: Goal; done: Set<string> }) {
   );
 }
 
-function AddGoalDialog({
+function GoalDialog({
   open,
   onOpenChange,
+  editing,
+  onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  editing: Goal | null;
+  onDone: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [duration, setDuration] = useState<number>(30);
   const [color, setColor] = useState(COLORS[0]);
   const [startDate, setStartDate] = useState(() => todayStr());
 
+  // Re-seed the form each time the dialog opens, blank or pre-filled for an edit.
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setTitle(editing.title);
+      setDuration(editing.durationDays);
+      setColor(editing.color);
+      setStartDate(editing.startDate);
+    } else {
+      setTitle("");
+      setDuration(30);
+      setColor(COLORS[0]);
+      setStartDate(todayStr());
+    }
+  }, [open, editing]);
+
   async function save() {
-    if (!title.trim()) return;
-    await db.goals.add({
-      title: title.trim(),
-      durationDays: duration,
-      startDate,
-      color,
-      createdAt: Date.now(),
-    });
-    setTitle("");
-    setDuration(30);
-    setColor(COLORS[0]);
-    setStartDate(todayStr());
+    if (!title.trim()) {
+      toast.error("Give the habit a name");
+      return;
+    }
+    if (editing?.id) {
+      await db.goals.update(editing.id, {
+        title: title.trim(),
+        durationDays: duration,
+        startDate,
+        color,
+      });
+      toast.success("Habit updated");
+    } else {
+      await db.goals.add({
+        title: title.trim(),
+        durationDays: duration,
+        startDate,
+        color,
+        createdAt: Date.now(),
+      });
+      toast.success("Habit created");
+    }
+    onDone();
     onOpenChange(false);
   }
 
@@ -301,7 +422,7 @@ function AddGoalDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader>
-          <DialogTitle>New habit</DialogTitle>
+          <DialogTitle>{editing ? "Edit habit" : "New habit"}</DialogTitle>
         </DialogHeader>
 
         <div>
@@ -360,7 +481,7 @@ function AddGoalDialog({
         </div>
 
         <Button onClick={save} className="h-12 rounded-2xl text-base font-semibold">
-          Create habit
+          {editing ? "Save changes" : "Create habit"}
         </Button>
       </DialogContent>
     </Dialog>

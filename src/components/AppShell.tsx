@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <span
                     className={`flex h-9 w-9 items-center justify-center rounded-2xl transition-all ${
-                      active ? "bg-sky text-foreground" : "bg-transparent"
+                      active ? "bg-sky text-sky-foreground" : "bg-transparent"
                     }`}
                   >
                     <Icon className="h-5 w-5" strokeWidth={2.2} />
@@ -56,7 +56,7 @@ export function Fab({ onClick, label = "Add" }: { onClick: () => void; label?: s
     <button
       onClick={onClick}
       aria-label={label}
-      className="fixed right-[max(1rem,calc(50%-13.5rem))] z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-sky text-foreground shadow-lg shadow-sky/40 transition-transform active:scale-95"
+      className="fixed right-[max(1rem,calc(50%-13.5rem))] z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-sky text-sky-foreground shadow-lg shadow-sky/40 transition-transform active:scale-95"
       style={{ bottom: "calc(7rem + env(safe-area-inset-bottom))" }}
     >
       <svg

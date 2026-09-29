@@ -46,7 +46,9 @@ const BUILTIN_PRESETS = [
   { focus: 25, break: 5, label: "Quick" },
   { focus: 30, break: 5, label: "Standard" },
 ];
-const CUSTOM_KEY = "ccc-custom-preset";
+const DEFAULT_CUSTOM = { focus: 40, break: 5, label: "Custom" };
+const CUSTOM_KEY = "focus-custom-preset";
+const LEGACY_CUSTOM_KEY = "ccc-custom-preset";
 const AUDIO_KEY = "focus-sound";
 const EGG_SOUND_KEY = "egg-sound-unlocked";
 const EGG_CLICK_WINDOW = 2000;
@@ -70,19 +72,27 @@ const BG_AUDIO_OPTIONS = [
 const BG_AUDIO_KEY = "focus-bg-sound";
 
 type Phase = "focus" | "break";
+type CustomPreset = { focus: number; break: number; label: string };
+
+function parsePreset(raw: string): CustomPreset | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed?.focus === "number" &&
+      typeof parsed?.break === "number" &&
+      parsed.focus > 0 &&
+      parsed.break > 0
+    ) {
+      return { focus: parsed.focus, break: parsed.break, label: "Custom" };
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+}
 
 function FocusPage() {
-  const [custom, setCustom] = useState<{ focus: number; break: number; label: string }>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(CUSTOM_KEY);
-        if (raw) return JSON.parse(raw);
-      } catch {
-        // ignore parse error
-      }
-    }
-    return { focus: 40, break: 5, label: "Custom" };
-  });
+  const [custom, setCustom] = useState<CustomPreset>(DEFAULT_CUSTOM);
   const presets = [...BUILTIN_PRESETS, custom];
   const [preset, setPreset] = useState(presets[2]);
   const [editOpen, setEditOpen] = useState(false);
@@ -125,6 +135,38 @@ function FocusPage() {
         setBgMusicId(entry.value);
       }
     });
+    // The custom preset now lives in Dexie so it is included in backup/restore.
+    // Presets saved by older builds in localStorage are migrated on first run.
+    (async () => {
+      let saved = await db.settings.get(CUSTOM_KEY);
+      if (!saved) {
+        let legacy: string | null = null;
+        try {
+          legacy = localStorage.getItem(LEGACY_CUSTOM_KEY);
+        } catch {
+          // ignore storage errors
+        }
+        const parsed = legacy ? parsePreset(legacy) : null;
+        if (parsed) {
+          saved = { key: CUSTOM_KEY, value: JSON.stringify(parsed) };
+          await db.settings.put(saved);
+          try {
+            localStorage.removeItem(LEGACY_CUSTOM_KEY);
+          } catch {
+            // ignore storage errors
+          }
+        }
+      }
+      const parsed = saved ? parsePreset(saved.value) : null;
+      if (parsed) {
+        setCustom(parsed);
+        setEditFocus(parsed.focus);
+        setEditBreak(parsed.break);
+        setPreset(parsed);
+        setPhase("focus");
+        setRemaining(parsed.focus * 60);
+      }
+    })();
     return () => {
       if (previewAudioRef.current) {
         previewAudioRef.current.pause();
@@ -289,11 +331,7 @@ function FocusPage() {
     const b = Math.max(1, Math.min(60, Math.round(editBreak)));
     const next = { focus: f, break: b, label: "Custom" };
     setCustom(next);
-    try {
-      localStorage.setItem(CUSTOM_KEY, JSON.stringify(next));
-    } catch {
-      // ignore storage error
-    }
+    db.settings.put({ key: CUSTOM_KEY, value: JSON.stringify(next) });
     setPreset(next);
     setPhase("focus");
     setRemaining(f * 60);
@@ -475,7 +513,7 @@ function FocusPage() {
               }}
               className={`rounded-2xl p-3 text-center transition-all ${
                 active
-                  ? "bg-sky text-foreground shadow-md"
+                  ? "bg-sky text-sky-foreground shadow-md"
                   : "bg-card text-muted-foreground shadow-sm"
               }`}
             >
@@ -553,7 +591,7 @@ function FocusPage() {
                   onClick={() => selectAudio(opt.id)}
                   className={`flex items-center justify-between rounded-xl p-3 transition-all ${
                     active
-                      ? "bg-sky text-foreground shadow-md"
+                      ? "bg-sky text-sky-foreground shadow-md"
                       : "bg-card text-muted-foreground shadow-sm hover:bg-accent"
                   }`}
                 >
@@ -596,7 +634,7 @@ function FocusPage() {
               }}
               className={`flex items-center rounded-xl p-3 transition-all ${
                 !bgMusicId
-                  ? "bg-sky text-foreground shadow-md"
+                  ? "bg-sky text-sky-foreground shadow-md"
                   : "bg-card text-muted-foreground shadow-sm hover:bg-accent"
               }`}
             >
@@ -613,7 +651,7 @@ function FocusPage() {
                   }}
                   className={`flex items-center justify-between rounded-xl p-3 transition-all ${
                     active
-                      ? "bg-sky text-foreground shadow-md"
+                      ? "bg-sky text-sky-foreground shadow-md"
                       : "bg-card text-muted-foreground shadow-sm hover:bg-accent"
                   }`}
                 >
@@ -688,7 +726,7 @@ function FocusPage() {
 
           <button
             onClick={toggle}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-sky text-foreground shadow-lg shadow-sky/40 active:scale-95"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-sky text-sky-foreground shadow-lg shadow-sky/40 active:scale-95"
           >
             {running ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
           </button>

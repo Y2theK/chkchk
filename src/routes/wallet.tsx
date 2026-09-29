@@ -49,8 +49,19 @@ const fmt = (n: number) => new Intl.NumberFormat(undefined, { maximumFractionDig
 function WalletPage() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Transaction | null>(null);
   const [chartUnlocked, setChartUnlocked] = useState(false);
   const eggClicksRef = useRef<number[]>([]);
+
+  const openAdd = useCallback(() => {
+    setEditing(null);
+    setOpen(true);
+  }, []);
+
+  const openEdit = useCallback((t: Transaction) => {
+    setEditing(t);
+    setOpen(true);
+  }, []);
 
   useEffect(() => {
     ensureSeed();
@@ -107,7 +118,7 @@ function WalletPage() {
         expense: inMonth.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0),
       };
     });
-  }, [allTx, month.getTime()]);
+  }, [allTx, month]);
 
   const categoryBreakdown = useMemo(() => {
     const map = new Map<number, number>();
@@ -142,7 +153,6 @@ function WalletPage() {
       },
     });
   }, []);
-
   return (
     <AppShell>
       <header className="mb-5 flex items-center justify-between">
@@ -172,7 +182,7 @@ function WalletPage() {
       </header>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2 relative rounded-3xl bg-sky p-5 text-foreground shadow-sm">
+        <div className="col-span-2 relative rounded-3xl bg-sky p-5 text-sky-foreground shadow-sm">
           <div className="flex items-center gap-2 text-xs font-medium opacity-80">
             <Wallet className="h-4 w-4" /> Balance this month
           </div>
@@ -329,6 +339,7 @@ function WalletPage() {
                       <li key={t.id}>
                         <SwipeRow
                           onDelete={() => deleteTx(t)}
+                          onClick={() => openEdit(t)}
                           deleteLabel="Delete transaction"
                           className="shadow-sm"
                         >
@@ -361,8 +372,13 @@ function WalletPage() {
         )}
       </section>
 
-      <Fab onClick={() => setOpen(true)} label="Add transaction" />
-      <AddTxDialog open={open} onOpenChange={setOpen} categories={categories ?? []} />
+      <Fab onClick={openAdd} label="Add transaction" />
+      <AddTxDialog
+        open={open}
+        onOpenChange={setOpen}
+        categories={categories ?? []}
+        editing={editing}
+      />
     </AppShell>
   );
 }
@@ -371,10 +387,12 @@ function AddTxDialog({
   open,
   onOpenChange,
   categories,
+  editing,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   categories: { id?: number; name: string; type: TxType; icon: string; color: string }[];
+  editing: Transaction | null;
 }) {
   const [type, setType] = useState<TxType>("expense");
   const [amount, setAmount] = useState("");
@@ -384,19 +402,49 @@ function AddTxDialog({
 
   const filtered = categories.filter((c) => c.type === type);
 
+  // Re-seed the form whenever the dialog opens, either blank or with the
+  // transaction being edited.
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setType(editing.type);
+      setAmount(String(editing.amount));
+      setCategoryId(editing.categoryId);
+      setNote(editing.note ?? "");
+      setDate(format(new Date(editing.occurredAt), "yyyy-MM-dd"));
+    } else {
+      setType("expense");
+      setAmount("");
+      setCategoryId(null);
+      setNote("");
+      setDate(format(new Date(), "yyyy-MM-dd"));
+    }
+  }, [open, editing]);
+
   async function save() {
     const n = parseFloat(amount);
-    if (!n || !categoryId) return;
-    await db.transactions.add({
+    if (!n || n <= 0) {
+      toast.error("Enter an amount greater than zero");
+      return;
+    }
+    if (!categoryId) {
+      toast.error("Pick a category");
+      return;
+    }
+    const payload = {
       type,
       amount: n,
       categoryId,
       note: note.trim() || undefined,
-      occurredAt: new Date(date).getTime(),
-    });
-    setAmount("");
-    setNote("");
-    setCategoryId(null);
+      occurredAt: new Date(`${date}T00:00:00`).getTime(),
+    };
+    if (editing?.id) {
+      await db.transactions.update(editing.id, payload);
+      toast.success("Transaction updated");
+    } else {
+      await db.transactions.add(payload);
+      toast.success("Transaction added");
+    }
     onOpenChange(false);
   }
 
@@ -404,7 +452,7 @@ function AddTxDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader>
-          <DialogTitle>Add transaction</DialogTitle>
+          <DialogTitle>{editing ? "Edit transaction" : "Add transaction"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2 rounded-full bg-muted p-1">
@@ -483,7 +531,7 @@ function AddTxDialog({
         </div>
 
         <Button onClick={save} className="h-12 rounded-2xl text-base font-semibold">
-          Save
+          {editing ? "Save changes" : "Save"}
         </Button>
       </DialogContent>
     </Dialog>

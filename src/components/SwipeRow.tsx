@@ -12,6 +12,8 @@ type SwipeRowProps = {
   children: ReactNode;
   onDelete: () => void;
   deleteLabel?: string;
+  /** Called on a plain tap. Not called after a drag, and not called while the row is open. */
+  onClick?: () => void;
   className?: string;
   innerClassName?: string;
 };
@@ -20,6 +22,7 @@ export function SwipeRow({
   children,
   onDelete,
   deleteLabel = "Delete",
+  onClick,
   className,
   innerClassName,
 }: SwipeRowProps) {
@@ -149,6 +152,7 @@ export function SwipeRow({
         onClick={() => {
           if (swallowClick()) return;
           if (open) close();
+          else onClick?.();
         }}
         style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
         className={cn(
