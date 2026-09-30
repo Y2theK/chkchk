@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Wallet, ListChecks, Timer, Smartphone, Target } from "lucide-react";
+import { Wallet, ListChecks, Timer, WifiOff, Target } from "lucide-react";
 
 interface AboutDialogProps {
   open: boolean;
@@ -80,6 +80,22 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
             </p>
             <p>
               <strong className="text-foreground">Android (Chrome):</strong> Menu → Install app
+            </p>
+          </div>
+        </div>
+
+        <div className="px-6 pb-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2">
+            Using Offline
+          </p>
+          <div className="flex items-start gap-3 rounded-2xl bg-muted/50 p-4">
+            <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2.2} />
+            <p className="text-xs text-muted-foreground">
+              Your data lives on this device, so everything keeps working without a connection —
+              <strong className="text-foreground">
+                once you've opened the app online at least once
+              </strong>
+              . After that it's fully offline, including the sound effects.
             </p>
           </div>
         </div>

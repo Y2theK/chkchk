@@ -127,7 +127,7 @@ export function SwipeRow({
           onDelete();
         }}
         aria-label={deleteLabel}
-        className="absolute inset-y-0 right-0 flex w-20 items-center justify-center bg-expense text-white"
+        className="absolute inset-y-0 right-0 flex w-20 items-center justify-center border-l border-border bg-secondary text-secondary-foreground"
       >
         <svg
           width="20"

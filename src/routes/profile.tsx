@@ -161,14 +161,17 @@ function ProfilePage() {
         <p className="text-sm text-muted-foreground">Your data lives on this device only.</p>
       </header>
 
-      <div className="rounded-3xl bg-sky p-5 shadow-sm">
+      {/* The whole card sits on a solid `bg-sky`, so every child needs the
+          sky-foreground ink. Inheriting `foreground`/`muted-foreground` puts
+          near-white text on a light blue card in dark mode (1.02:1). */}
+      <div className="rounded-3xl bg-sky p-5 text-sky-foreground shadow-sm">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card shadow-sm">
             <Heart className="h-6 w-6 text-expense" />
           </div>
           <div>
             <p className="font-display text-lg font-bold">Hi there!</p>
-            <p className="text-xs text-muted-foreground">Keep up the good work.</p>
+            <p className="text-xs text-sky-foreground/70">Keep up the good work.</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
@@ -251,6 +254,10 @@ function ProfilePage() {
                 <li>2. Tap "Install app" or "Add to Home Screen"</li>
                 <li>3. Tap "Install" to confirm</li>
               </ol>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Open the app once while online after installing. Your data is stored on this device,
+                so it works without a connection from then on.
+              </p>
             </div>
           </div>
         </div>
@@ -278,7 +285,7 @@ function ProfilePage() {
             <AlertDialogCancel className="rounded-2xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={clearAll}
-              className="rounded-2xl bg-expense text-white hover:opacity-90"
+              className="rounded-2xl bg-destructive text-destructive-foreground hover:opacity-90"
             >
               Delete everything
             </AlertDialogAction>
@@ -291,9 +298,9 @@ function ProfilePage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl bg-card/70 py-2">
+    <div className="rounded-2xl bg-card/70 py-2 text-sky-foreground">
       <p className="text-lg font-bold">{value}</p>
-      <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-medium text-sky-foreground/70">{label}</p>
     </div>
   );
 }

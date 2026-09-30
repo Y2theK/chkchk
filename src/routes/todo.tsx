@@ -223,24 +223,18 @@ function TodoPage() {
               aria-checked={t.done === 1}
               aria-label={t.title}
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                t.done ? "border-income bg-income text-white" : "border-border bg-transparent"
+                t.done ? "border-income bg-income text-background" : "border-border bg-transparent"
               }`}
             >
               {t.done ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
             </button>
-            <button
-              onClick={() => openEdit(t)}
-              className="min-w-0 flex-1 text-left"
-              aria-label={`Edit ${t.title}`}
+            <p
+              className={`min-w-0 flex-1 truncate text-sm font-medium ${
+                t.done ? "text-muted-foreground line-through" : ""
+              }`}
             >
-              <p
-                className={`truncate text-sm font-medium ${
-                  t.done ? "text-muted-foreground line-through" : ""
-                }`}
-              >
-                {t.title}
-              </p>
-            </button>
+              {t.title}
+            </p>
             {t.recurring === 1 && <Repeat className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
             <button
               onClick={() => remove(t)}

@@ -339,7 +339,6 @@ function WalletPage() {
                       <li key={t.id}>
                         <SwipeRow
                           onDelete={() => deleteTx(t)}
-                          onClick={() => openEdit(t)}
                           deleteLabel="Delete transaction"
                           className="shadow-sm"
                         >

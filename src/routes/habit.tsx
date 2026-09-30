@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Target, Flame, CheckCircle2, Pencil } from "lucide-react";
+import { Trash2, Target, Flame, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AreaChart,
@@ -215,7 +215,6 @@ function HabitPage() {
             key={g.id}
             goal={g}
             done={logsByGoal.get(g.id!) ?? new Set()}
-            onEdit={() => openEdit(g)}
             onDelete={() => setDeleting(g)}
           />
         ))}
@@ -248,7 +247,7 @@ function HabitPage() {
             <AlertDialogCancel className="rounded-2xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleting && deleteGoal(deleting)}
-              className="rounded-2xl bg-expense text-white hover:opacity-90"
+              className="rounded-2xl bg-destructive text-destructive-foreground hover:opacity-90"
             >
               Delete habit
             </AlertDialogAction>
@@ -262,12 +261,10 @@ function HabitPage() {
 function GoalCard({
   goal,
   done,
-  onEdit,
   onDelete,
 }: {
   goal: Goal;
   done: Set<string>;
-  onEdit: () => void;
   onDelete: () => void;
 }) {
   const start = parseISO(goal.startDate);
@@ -310,13 +307,6 @@ function GoalCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            onClick={onEdit}
-            aria-label={`Edit ${goal.title}`}
-            className="p-1 text-muted-foreground hover:text-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
           <button
             onClick={onDelete}
             aria-label={`Delete ${goal.title}`}
